@@ -66,8 +66,11 @@ def stderr(str):
 
 logfile = open(LOGFILE,'a')
 def stdlog(str):
-	str = re.sub(r"\x1b[^m]*m","",str)
-	logfile.write("[%f] %s\n" % (time.time(),str))
+	str = " ".join(str.split())
+	str = str.replace("\n","")
+	str = str.replace(" | "," ")
+	str = re.sub(r"(\x1b[^m]*m)","",str)
+	logfile.write("%f %s\n" % (time.time(),str))
 	logfile.flush()
 
 
