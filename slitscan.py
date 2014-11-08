@@ -318,14 +318,14 @@ def send_token(client):
 	client.sock.sendall(client.token)
 	client.state = states["SENT_TOKEN"]
 	tokens[client.token] = client.getfd()
-	client.log("\033[1;43;30m>>\033[0m","\033[1;32m%s\033[0m" % `client.token`)
+	client.log("\033[1;42;37m>>\033[0m","\033[1;32m%s\033[0m" % `client.token`)
 
 
 def send_connect(client):
 	pkg = "CONNECT %s:%d HTTP/1.0\r\n\r\n" % (CALLBACK_IP,CALLBACK_PORT)
 	client.sock.sendall(pkg)
 	client.state = states["SENT_CONNECT"]
-	client.log("\033[0;42;37m>>\033[0m","\033[0;33m%s\033[0m" % `pkg`)
+	client.log("\033[1;42;37m>>\033[0m","\033[0;33m%s\033[0m" % `pkg`)
 
 
 #######
