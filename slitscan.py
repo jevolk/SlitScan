@@ -92,15 +92,15 @@ def stdlog(str):
 
 states =\
 {
-	"INITIATED":         0,
-	"ESTABLISHED":       1,
-	"SENT_CONNECT":      2,
-	"RECV_CODE":         3,
-	"SAME_BACK":         4,
-	"DIFF_BACK":         5,
-	"SENT_TOKEN":        6,
-	"RECV_TOKEN":        7,
-	"DISCOVERED":        8,
+	"INITIATED":         0,       # (entry client)   Connection SYN sent.
+	"ESTABLISHED":       1,       # (entry client)   Handshake complete.
+	"SENT_CONNECT":      2,       # (entry client)   Sent the CONNECT command to the proxy.
+	"RECV_CODE":         3,       # (entry client)   Received an HTTP status code from the proxy.
+	"SAME_BACK":         4,       # (both clients)   Connect-back was from the source IP.
+	"DIFF_BACK":         5,       # (exit client)    Connect-back is not yet associated.
+	"SENT_TOKEN":        6,       # (entry client)   Nonce string sent to the proxy.
+	"RECV_TOKEN":        7,       # (exit client)    Connect-back client received a token string.
+	"DISCOVERED":        8,       # (both)           Token successfully associated entry and exit.
 }
 
 def statekeys(val):
