@@ -17,7 +17,7 @@ from random import choice
 from string import printable
 from socket import AF_INET, SOCK_STREAM
 from select import POLLIN, POLLOUT, POLLPRI, POLLERR, POLLHUP, POLLNVAL
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 
 
 # Constants
