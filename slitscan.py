@@ -274,7 +274,7 @@ def handle_fifo(fifo, ev):
 
 def handle_listener_diff_back(conn, remote):
 	client = Client(conn,POLLIN|POLLHUP|POLLERR|POLLNVAL,remote,states["DIFF_BACK"])
-	client.log("\033[1;46;37m<|\033[0m","\033[0;35Connection from unknown IP.\033[0m")
+	client.log("\033[1;46;37m<|\033[0m","\033[0;35mConnection from unknown IP.\033[0m")
 	register(client)
 
 
