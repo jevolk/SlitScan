@@ -340,14 +340,16 @@ def handle_client_token(client, data):
 		raise Discord("Got an unrecognized token: %s" % `data`)
 
 	client.state = states["RECV_TOKEN"]
-	client.log("\033[1;42;35m<<\033[0m","\033[1;32mGot token back: %s\033[0m" % `data`)
+	client.log("\033[1;42;35m<<\033[0m","\033[1;32mGot a token: %s\033[0m" % `data`)
 	
 	source = fds[tokens[data]]
 	source.state = states["DISCOVERED"]
-	client.log("\033[1;45m()\033[0m","\033[1;35mDiscovered tunnel to: %s\033[0m" % client.remstr())
-
-	client.sock.shutdown(socket.SHUT_RDWR)
+	source.log("\033[1;45m()\033[0m","\033[1;35mDiscovered tunnel to %s\033[0m" % client.remstr())
 	source.sock.shutdown(socket.SHUT_RDWR)
+
+	client.state = states["DISCOVERED"]
+	client.log("\033[1;45m)(\033[0m","\033[1;35mDiscovered tunnel from %s\033[0m" % source.remstr())
+	client.sock.shutdown(socket.SHUT_RDWR)
 
 
 def handle_client_http(client, data):
