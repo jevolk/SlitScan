@@ -59,11 +59,11 @@ class WebParser(Harvester):
 
 
 	def pages(self):
-		if not self.num_pages:
-			yield self._page_fetch()
-		else:
-			for i in xrange(0,self.num_pages):
+		for i in self._page_range(self.num_pages):
+			if i is not None:
 				yield self._page_fetch((i))
+			else:
+				yield self._page_fetch()
 
 
 	def _page_fetch(self,
@@ -97,3 +97,21 @@ class WebParser(Harvester):
 			return zip(ips,ports)
 
 		return re.findall(regex[0],data)
+
+
+	def _page_range(self, arg):
+		if not arg:
+			return [None]
+
+		elif isinstance(arg,int):
+			return range(arg)
+
+		elif isinstance(arg,tuple) and not any(map(lambda x: x is None, arg)):
+			return range(*arg)
+
+		elif isinstance(arg,tuple) and arg[0] is None:
+			start = 1 if len(arg) <= 2 else arg[1]
+			stop = arg[1] if len(arg) <= 2 else arg[2]
+			ret = [""]
+			ret.extend(range(start,stop))
+			return ret
