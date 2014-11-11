@@ -46,9 +46,6 @@ class Discord(Disconnected):   pass
 def remstr(remote):
 	return "%s:%d" % (remote[0],remote[1])
 
-def remstrf(remote):
-	return "%-15s %-5d" % (remote[0],remote[1])
-
 def remserial(str):
 	return tuple(str.split(":"))
 
@@ -131,12 +128,11 @@ class Client(object):
 	def getport(self):       return self.remote[1]
 	def statekey(self):      return statekey(self.state)
 	def remstr(self):        return remstr(self.remote) if self.remote is not None else "---"
-	def remstrf(self):       return remstrf(self.remote) if self.remote is not None else "---"
 	def fdstrf(self):        return "%4d" % self.getfd()
 	def maskstrf(self):      return "%-03x" % self.mask
 	def fdmaskstrf(self):    return "%s | %s" % (self.fdstrf(),self.maskstrf())
 	def statestrf(self):     return "%3d %1d | %-16s" % (self.code,self.state,self.statekey())
-	def __str__(self):       return "%s | %-16s | %-21s" % (self.fdmaskstrf(),self.statestrf(),self.remstrf())
+	def __str__(self):       return "%s | %-16s | %-21s" % (self.fdmaskstrf(),self.statestrf(),self.remstr())
 	def _log(self,sym,msg):  return "%s %s : %s" % (sym,str(self),msg)
 	def log(self,sym,msg):
 		str = self._log(sym,msg)
