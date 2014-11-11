@@ -11,25 +11,32 @@ import re
 import sys
 import stat
 import time
+import struct
 import select
 import socket
 from random import choice
 from string import printable
 from socket import AF_INET, SOCK_STREAM
+from socket import SOL_SOCKET, SO_ERROR, SO_REUSEADDR, SO_LINGER, SO_KEEPALIVE
+from socket import IPPROTO_IP, IP_TOS
+from socket import IPPROTO_TCP, TCP_SYNCNT
 from select import POLLIN, POLLOUT, POLLPRI, POLLERR, POLLHUP, POLLNVAL
 from collections import OrderedDict
 
 
 # Constants
-MAX_SOCKETS     = 32                              # Effective limit for the maximum number of simultaneous proxy tests.
-TIMEOUT         = 15                              # Proxy communication timeout
-LISTEN_IP       = "0.0.0.0"                       # The bind IP where we listen for proxy callbacks
-LISTEN_PORT     = 16667                           # The bind port where we listen for proxy callbacks
-CALLBACK_IP     = LISTEN_IP                       # Actual IP that the proxy gets told to connect to
-CALLBACK_PORT   = LISTEN_PORT                     # Actual port that the proxy gets told to connect to
-HARVEST_DIR     = "harvest/"                      # Harvesters should be placed in this subdirectory.
-HARVEST_FIFO    = HARVEST_DIR + "harvest.fifo"    # Harvesters write to the FIFO at this path.
-LOGFILE         = "slitscan.log"                  # Results go here
+LOGFILE          = "slitscan.log"                  # Results go here
+HARVEST_DIR      = "harvest/"                      # Harvesters should be placed in this subdirectory.
+HARVEST_FIFO     = HARVEST_DIR + "harvest.fifo"    # Harvesters write to the FIFO at this path.
+LISTEN_IP        = "0.0.0.0"                       # !!! CHANGE ME !!! The bind IP where we listen for callbacks
+LISTEN_PORT      = 16667                           # The bind port where we listen for proxy callbacks
+CALLBACK_IP      = LISTEN_IP                       # Actual IP that the proxy gets told to connect to
+CALLBACK_PORT    = LISTEN_PORT                     # Actual port that the proxy gets told to connect to
+
+MAX_SOCKETS      = 128                             # Effective limit for the maximum number of simultaneous proxy tests.
+SYN_CNT          = 7                               # Maximum number of connection attempts
+SYN_TIMEOUT      = 5                               # Connection reattempted for SYN_CNT times after this timeout
+TIMEOUT          = 45                              # Coarse timeout for states other than INITIATED (which uses SYN_)
 
 
 # Exceptions
@@ -61,14 +68,12 @@ def stdout(str):
 def stderr(str):
 	sys.stderr.write("[%f] %s\n" % (time.time(),str))
 
-logfile = open(LOGFILE,'a')
 def stdlog(str):
 	str = " ".join(str.split())
 	str = str.replace("\n","")
 	str = str.replace(" | "," ")
 	str = re.sub(r"(\x1b[^m]*m)","",str)
-	logfile.write("%f %s\n" % (time.time(),str))
-	logfile.flush()
+	open(LOGFILE,'a').write("%f %s\n" % (time.time(),str))
 
 
 
@@ -122,10 +127,13 @@ class Client(object):
 		self.state     = state
 		self.code      = 0
 		self.token     = None
+		self.last      = time.time()
 
 	def getfd(self):         return self.sock.fileno()
 	def getip(self):         return self.remote[0]
 	def getport(self):       return self.remote[1]
+	def timeout(self):       return time.time() - self.last
+	def timedout(self):      return self.state is not states["INITIATED"] and self.timeout() >= TIMEOUT
 	def statekey(self):      return statekey(self.state)
 	def remstr(self):        return remstr(self.remote) if self.remote is not None else "---"
 	def fdstrf(self):        return "%4d" % self.getfd()
@@ -181,7 +189,7 @@ class Listener(Client):
 		super(Listener,self).__init__(socket.socket(AF_INET,SOCK_STREAM),
 		                              POLLIN | POLLHUP | POLLERR | POLLNVAL,
 		                              (ip,port))
-		self.sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+		self.sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
 		self.sock.bind(self.remote)
 		self.sock.listen(MAX_SOCKETS)
 
@@ -288,6 +296,10 @@ def handle_listener_same_back(conn, remote):
 
 def handle_listener_accept(conn, remote):
 	conn.setblocking(0)
+	conn.setsockopt(SOL_SOCKET,SO_KEEPALIVE,False)
+	conn.setsockopt(SOL_SOCKET,SO_LINGER,struct.pack('ii',1,0))
+	conn.setsockopt(IPPROTO_IP,IP_TOS,4)
+
 	if remote[0] not in ips:
 		handle_listener_diff_back(conn,remote)
 	else:
@@ -392,18 +404,15 @@ def handle_client_established(client):
 
 
 def handle_client_error(client):
-	client.sock.recv(0)                      # might throw something useful first
-	raise Disconnected("Unknown error")
-
-
-def handle_client_hangup(client):
-	client.sock.recv(0)                      # might throw something useful first
-	raise Disconnected("Connection closed")
+	ret = client.sock.getsockopt(SOL_SOCKET,SO_ERROR)
+	raise Disconnected("[%d] %s" % (ret,os.strerror(ret)))
 
 
 def handle_client(client, ev):
+	client.last = time.time()
+
 	if ev & POLLNVAL:            raise Disconnected("INVALID")
-	if ev & POLLHUP:             handle_client_hangup(client)
+	if ev & POLLHUP:             handle_client_error(client)
 	if ev & POLLERR:             handle_client_error(client)
 	if ev & POLLIN:              handle_client_recv(client)
 	if ev & POLLOUT:             handle_client_established(client)
@@ -439,6 +448,10 @@ def connect(remote):
 	client.mask = POLLIN | POLLOUT | POLLERR | POLLHUP | POLLNVAL
 	client.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 	client.sock.setblocking(0)
+	client.sock.setsockopt(SOL_SOCKET,SO_KEEPALIVE,False)
+	client.sock.setsockopt(SOL_SOCKET,SO_LINGER,struct.pack('ii',1,0))
+	client.sock.setsockopt(IPPROTO_IP,IP_TOS,4)
+	client.sock.setsockopt(IPPROTO_TCP,TCP_SYNCNT,SYN_CNT)
 	client.sock.connect_ex(client.remote)
 	client.log("\033[1;43;30m|>\033[0m","Attempting connect...")
 	register(client)
@@ -459,20 +472,36 @@ def start():
 			raise
 
 
-	
+def reap():
+	timed_out = [client for client in fds.itervalues() if client.timedout()]
+	for client in timed_out:
+		client.log("\033[1;41;37m--\033[0m","\033[1;31mNo action\033[0m")
+		unregister(client)
+
+
+
 ###############################################################################
 # Main program loop
 
-stdout("FIFO @ %s" % fifo.path)
-stdout("Listening on %s" % listener.remstr())
-stdout("Logging to %s" % LOGFILE)
 
 register(fifo)
 register(listener)
+socket.setdefaulttimeout(SYN_TIMEOUT)
 
-print "SlitScan starting..."
+stdout("pid %d" % os.getpid())
+stdout("FIFO @ %s" % fifo.path)
+stdout("Listening on %s" % listener.remstr())
+stdout("Logging to %s" % LOGFILE)
+stdout("\033[2;32mSystem Ready\033[0m")
 
 while 1:
-	start()
-	for fd, ev in poll.poll():
-		handle(fd,ev)
+	try:
+		reap()
+		start()
+		ready = poll.poll(1000)
+		for fd, ev in ready:
+			handle(fd,ev)
+
+	except KeyboardInterrupt:
+		stdout("Interrupted")
+		break
