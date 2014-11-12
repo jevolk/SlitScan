@@ -20,7 +20,7 @@ class Harvester(object):
 	def __init__(self,
 	             fifo_name  = FIFO_NAME):
 		try:
-			self.fifo_path = os.getcwd() + "/" + fifo_name
+			self.fifo_path = os.path.dirname(__file__) + "/" + fifo_name
 			self.fifo_fd = os.open(self.fifo_path, O_WRONLY | O_APPEND | O_NONBLOCK)
 			self.fifo = os.fdopen(self.fifo_fd,'a')
 		except OSError as e:
