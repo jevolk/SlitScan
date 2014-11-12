@@ -29,9 +29,21 @@ class Harvester(object):
 
 
 	def scan(self,remote):
-		sys.stdout.write("%s:%s\n" % (remote[0],remote[1]))
+		if isinstance(remote, tuple):
+			if len(remote) == 2:
+				self._scan("%s:%s" % (remote[0],remote[1]))
+			else:
+				raise Exception("Remote tuple must have (ip,port)")
+		elif isinstance(remote, str):
+			self._scan(remote)
+		else:
+			raise Exception("Unrecognized remote type")
+
+
+	def _scan(self,remstr):
+		sys.stdout.write("%s\n" % remstr)
 		if self.fifo is not None:
-			self.fifo.write("%s:%s\n" % (remote[0],remote[1]))
+			self.fifo.write("%s\n" % remstr)
 			self.fifo.flush()
 
 
