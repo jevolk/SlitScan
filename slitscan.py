@@ -198,7 +198,7 @@ class Listener(Client):
 # Runtime state
 poll      = select.poll()                         # The poll object, the only blocking part of the program.
 queue     = OrderedDict()                         # Stage area. OrderedDict is used for deduplication.
-listener  = Listener(LISTEN_IP,LISTEN_PORT)       # The bound listening socket for connect-backs.
+listener  = None                                  # The bound listening socket for connect-backs. (Assigned in main)
 fifo      = Fifo(HARVEST_FIFO)                    # The input FIFO object.
 ips       = {}                                    # Map of IPs to fd numbers (not remotes, just IPs)
 tokens    = {}                                    # Map of nonce codes to fd numbers
@@ -438,6 +438,7 @@ def handle(fd, ev):
 		raise
 
 
+
 ###############################################################################
 # Initiating new proxies
 
@@ -481,19 +482,40 @@ def reap():
 
 
 ###############################################################################
-# Main program loop
+# Main
 
+
+## Parse and assign any configuration from arguments
+if len(sys.argv) > 1:
+	try:
+		LISTEN_IP, sp, port = sys.argv[1].partition(":")
+		LISTEN_PORT = int(port)
+	except ValueError as e:
+		sys.stderr.write("Invalid listen ip:port argument")
+		exit(-1)
+
+
+## Initializations
+try:
+	listener = Listener(LISTEN_IP,LISTEN_PORT)
+except socket.error as e:
+	print "%s: %s:%d" % (e,LISTEN_IP,LISTEN_PORT)
+	exit(-1)
 
 register(fifo)
 register(listener)
 socket.setdefaulttimeout(SYN_TIMEOUT)
 
+
+## Output of the running configuration
 stdout("pid %d" % os.getpid())
 stdout("FIFO @ %s" % fifo.path)
 stdout("Listening on %s" % listener.remstr())
 stdout("Logging to %s" % LOGFILE)
 stdout("\033[2;32mSystem Ready\033[0m")
 
+
+## Main program loop
 while 1:
 	try:
 		reap()
