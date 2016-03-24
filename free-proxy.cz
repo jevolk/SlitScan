@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python2
 
-from Harvester import WebParser
+from harvester import WebParser
 
 url = "http://free-proxy.cz/en/proxylist/main/%d"
 # </div> 117.175.231.117</td>
@@ -12,5 +12,10 @@ pages        = 179
 wp = WebParser(url,(ip_regex,port_regex),pages)
 
 for remote in wp.remotes():
-        wp.scan(remote)
+	    wp.scan(remote)
+
+
+
+
+
 

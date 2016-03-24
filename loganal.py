@@ -18,5 +18,7 @@ for row in open(sys.argv[1]):
 	elem = column._make(colv.split(" "))
 
 	if elem.symbol == "()":
-		print "%d %s" % (float(elem.time),elem.remote)
-		harvester.scan(elem.remote)
+	    print "%d %s" % (float(elem.time),elem.remote)
+	    harvester.scan(elem.remote)
+
+

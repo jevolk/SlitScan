@@ -1,0 +1,13 @@
+#!/usr/bin/env python2
+
+import subprocess
+lst=['checkproxy.net', 'free-proxy.cz', 'getproxy.jp', 
+	'mrhinkydink.com', 'proxy-list.org', 'proxynova.com',
+	'us-proxy.org', 'xroxy.com']
+
+for ind in lst:
+	print ind
+	subprocess.call([ind])
+
+
+
